@@ -54,17 +54,23 @@ def gcd(a, b):
 ####################### Knot Definitions ###############################
 ########################################################################
 def Torus_Knot(self, linkIndex=0):
-    p = self.torus_p # revolution
-    q = self.torus_q # spin
-
-    u = self.torus_u # p multiplier
-    v = self.torus_v # q multiplier
+    p = self.torus_p # revolution count
+    q = self.torus_q # spin count
 
     res = self.torus_res # curve resolution
 
-    h = self.torus_h # height (scale along Z)
+    # use plus options only when they are enabled
+    if self.options_plus:
+        u = self.torus_u # p multiplier
+        v = self.torus_v # q multiplier
 
-    s = self.torus_s # torus scale (radii scale factor)
+        h = self.torus_h # height (scale along Z)
+        s = self.torus_s # torus scale (radii scale factor)
+    else: 
+        u = 1
+        v = 1
+        h = 1
+        s = 1
 
     R = self.torus_R * s # major radius (scaled)
     r = self.torus_r * s # minor radius (scaled)
@@ -91,6 +97,7 @@ def Torus_Knot(self, linkIndex=0):
     if self.flip_p: p*=-1
     if self.flip_q: q*=-1
 
+    # create the 3D point array for the current link
     newPoints = []
     for i in range(res-1):
         a = (i*da) 
@@ -101,7 +108,8 @@ def Torus_Knot(self, linkIndex=0):
         y = (R + r*cos(phi)) * sin(theta)
         z = r*sin(phi) * h
 
-        newPoints.append([x,y,z])
+        # append 3D point (adjusted later as needed to 4D for POLY and NURBS)
+        newPoints.append([x,y,z]) 
 
     return newPoints
 
@@ -112,8 +120,7 @@ def Torus_Knot(self, linkIndex=0):
 def align_matrix(context):
     loc = Matrix.Translation(context.scene.cursor_location)
     obj_align = context.user_preferences.edit.object_align
-    if (context.space_data.type == 'VIEW_3D'
-        and obj_align == 'VIEW'):
+    if (context.space_data.type == 'VIEW_3D' and obj_align == 'VIEW'):
         rot = context.space_data.region_3d.view_matrix.to_3x3().inverted().to_4x4()
     else:
         rot = Matrix()
@@ -131,7 +138,7 @@ def setBezierHandles(obj, mode = 'AUTOMATIC'):
     bpy.ops.curve.handle_type_set(type=mode)
     bpy.ops.object.mode_set(mode='OBJECT', toggle=True)
 
-# get array of vertcoordinates acording to splinetype
+# get array of vert coordinates according to spline type
 def vertsToPoints(Verts, splineType):
     # main vars
     vertArray = []
@@ -159,11 +166,13 @@ def vertsToPoints(Verts, splineType):
 ##------------------------------------------------------------
 # Main Function
 def create_torus_knot(self, context):
+    # pick a name based on (p,q) parameters
     aName = "Torus Knot %i x %i" % (self.torus_p, self.torus_q)
+    
     # create curve
     curve_data = bpy.data.curves.new(name=aName, type='CURVE')
     
-    # setup materials for the links
+    # setup materials to be used for the links
     if self.use_colors:
         addLinkColors(self, curve_data)
 
@@ -177,7 +186,7 @@ def create_torus_knot(self, context):
         # get vertices for the current link
         verts = Torus_Knot(self, l)
     
-        # output splineType 'POLY' 'NURBS' 'BEZIER'
+        # output splineType 'POLY' 'NURBS' or 'BEZIER'
         splineType = self.outputType    
         
         # turn verts into array (based on spline type)
@@ -196,9 +205,10 @@ def create_torus_knot(self, context):
         # set curve Options
         spline.use_cyclic_u = True
         spline.order_u = 4
+
         # set a color per link
         if self.use_colors:
-            spline.material_index=l
+            spline.material_index = l
 
     curve_data.dimensions = '3D'
 
@@ -214,14 +224,14 @@ def create_torus_knot(self, context):
     # new_obj = object_data_add(context, curve_data, operator=self)
     new_obj = bpy.data.objects.new(aName, curve_data)
 
-    # set object in scene
+    # set object in the scene
     scene = bpy.context.scene
     scene.objects.link(new_obj) # place in active scene
     new_obj.select = True # set as selected
     scene.objects.active = new_obj  # set as active
     new_obj.matrix_world = self.align_matrix # apply matrix
 
-    # set bezier handles
+    # set BEZIER handles
     if splineType == 'BEZIER':
         setBezierHandles(new_obj, self.handleType)
 
@@ -268,7 +278,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     bl_description = "Adds many types of knots"
 
     def mode_update_callback(self, context):
-        # keep the reciprocal radii sets (R,r)/(iR,oR) in sync
+        # keep the reciprocal radii sets (R,r)/(iR,eR) in sync
         if self.mode == 'EXT_INT':
             self.torus_eR = self.torus_R + self.torus_r
             self.torus_iR = self.torus_R - self.torus_r
@@ -397,13 +407,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 #max=1, soft_max=1,
                 description="q multiplier")
 
-    # torus_rounds = IntProperty(
-    #             name="Rounds",
-    #             default=2,
-    #             min=1, soft_min=1,
-    #             #max=1, soft_max=1,
-    #             description="Rounds")
-
     mode = bpy.props.EnumProperty(
                 name="Torus Dimensions",
                 items=(("MAJOR_MINOR", "Major/Minor",
@@ -501,13 +504,9 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         box.prop(self, 'multiple_links')
         
         if self.options_plus:
-            # row = box.row()
-            # row.column().prop(self, 'torus_l')
-            # row.column().prop(self, 'flip_l')
             box = box.box()
             box.prop(self, 'torus_u')
             box.prop(self, 'torus_v')
-            # box.prop(self, 'torus_rounds')
 
         # DIMENSIONS Options
         col = layout.column(align=True)
@@ -542,7 +541,12 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         col = box.column()
         col.label(text="Output Curve Type:")
         col.row().prop(self, 'outputType', expand=True)
-        box.prop(self, 'torus_res', text="Curve Resolution") 
+
+        depends=box.column()
+        depends.prop(self, 'torus_res', text="Curve Resolution")
+        # deactivate the "curve resolution" if "adaptive resolution" is enabled
+        depends.enabled = not (self.options_plus and self.adaptive_resolution)
+
         box.prop(self, 'geo_res')
 
         if self.options_plus:
@@ -575,7 +579,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         box = col.box()
         box.prop(self, 'location')
         box.prop(self, 'rotation')
-        # col.prop(self, 'scale')
 
     ##### POLL #####
     @classmethod
@@ -589,14 +592,19 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             self.torus_R = (self.torus_eR + self.torus_iR)*0.5
             self.torus_r = (self.torus_eR - self.torus_iR)*0.5
 
-        if self.adaptive_resolution:
+        if self.options_plus and self.adaptive_resolution:
+            # adjust curve resolution automatically based on (p,q,R,r) values
             p = self.torus_p
             q = self.torus_q
             R = self.torus_R
             r = self.torus_r
             links = gcd(p,q)
-            # approximation (can be improved with a better torus knot length approximation)
-            self.torus_res = (p*R+q*r+2)/links * 20 
+            # get an approximate TK length 
+            maxTKLen = 2.0*pi*sqrt(p*p*(R+r)*(R+r) + q*q*r*r) # upper bound approximation
+            minTKLen = 2.0*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
+            avgTKLen = 0.5*(minTKLen + maxTKLen) # average approximation
+            if DEBUG: print("Approximate average TK length = %.2f" % avgTKLen)
+            self.torus_res = avgTKLen/links * 8 # x N factor = control points per unit length 
 
         # turn off undo
         undo = bpy.context.user_preferences.edit.use_global_undo
