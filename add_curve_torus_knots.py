@@ -359,13 +359,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 min=1, soft_min=1,
                 #max=1, soft_max=1,
                 description="Number of SPINs through the torus hole before closing the knot.")
-  
-    torus_l = IntProperty(
-                name="λ",
-                default=0,
-                min=0, soft_min=0,
-                #max=1, soft_max=1,
-                description="Number of vertical WAVEs before closing the knot.")
  
     flip_p = BoolProperty(
                 name="Flip p",
@@ -376,11 +369,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Flip q",
                 default=False,
                 description="Flip SPIN direction")
-
-    flip_l = BoolProperty(
-                name="Flip λ",
-                default=False,
-                description="Flip WAVE direction")
 
     multiple_links = BoolProperty(
                 name="Multiple Links",
