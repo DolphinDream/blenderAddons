@@ -19,9 +19,9 @@
 '''
 bl_info = {
     "name": "Torus Knots",
-    "author": "testscreenings",
-    "version": (0, 1),
-    "blender": (2, 59, 0),
+    "author": "Marius Giurgi, testscreenings",
+    "version": (0, 2),
+    "blender": (2, 76, 0),
     "location": "View3D > Add > Curve",
     "description": "Adds many types of (torus) knots",
     "warning": "",
@@ -35,55 +35,175 @@ bl_info = {
 import bpy
 from bpy.props import *
 from math import sin, cos, pi
+from math import *
+from mathutils import *
 from bpy_extras.object_utils import AddObjectHelper, object_data_add
+from random import random
+
+DEBUG = False
+
+# greatest common denominator
+def gcd(a, b):
+    if b == 0: 
+        return a
+    else:
+        return gcd(b, a % b)
 
 
 ########################################################################
 ####################### Knot Definitions ###############################
 ########################################################################
-def Torus_Knot(self):
-    p = self.torus_p
-    q = self.torus_q
-    w = self.torus_w
-    res = self.torus_res
-    h = self.torus_h
-    u = self.torus_u
-    v = self.torus_v
-    rounds = self.torus_rounds
+def Torus_Knot(self, linkIndex=0):
+    p = self.torus_p # revolution
+    q = self.torus_q # spin
+
+    u = self.torus_u # p multiplier
+    v = self.torus_v # q multiplier
+
+    res = self.torus_res # curve resolution
+
+    h = self.torus_h # height (scale along Z)
+
+    s = self.torus_s # torus scale (radii scale factor)
+
+    R = self.torus_R * s # major radius (scaled)
+    r = self.torus_r * s # minor radius (scaled)
+    
+    # revolve until closing ONE link (no overlapping curve when p & q are not co-primes)
+    links = gcd(p,q)
+    rounds = 1.0 / links
+
+    angle = 2.0*pi*rounds
+    da = angle/(res-1)
+
+    linkPhase = 2.0*pi/q * linkIndex
+    
+    if DEBUG:
+        print("")
+        print("Link %i of %i" % (linkIndex, links))
+        print("gcd is %i" % links)
+        print("p is %i" % p)
+        print("q is %i" % q)
+        print("link phase is %.2f deg" % (linkPhase * 180/pi))
+        print("link phase is %.2f rad" % linkPhase)
+
+    # flip directions ?
+    if self.flip_p: p*=-1
+    if self.flip_q: q*=-1
 
     newPoints = []
-    angle = 2*rounds
-    step = angle/(res-1)
-    scale = h
-    height = w
-
     for i in range(res-1):
-        t = ( i*step*pi)
+        a = (i*da) 
+        theta = p*a*u + linkPhase # revolutions
+        phi   = q*a*v # spins
 
-        x = (2 * scale + cos((q*t)/p*v)) * cos(t * u)
-        y = (2 * scale + cos((q*t)/p*v)) * sin(t * u)
-        z = sin(q*t/p) * height
+        x = (R + r*cos(phi)) * cos(theta)
+        y = (R + r*cos(phi)) * sin(theta)
+        z = r*sin(phi) * h
 
-        newPoints.extend([x,y,z,1])
+        newPoints.append([x,y,z])
 
     return newPoints
 
 
 ##------------------------------------------------------------
+# calculates the matrix for the new object
+# depending on user pref
+def align_matrix(context):
+    loc = Matrix.Translation(context.scene.cursor_location)
+    obj_align = context.user_preferences.edit.object_align
+    if (context.space_data.type == 'VIEW_3D'
+        and obj_align == 'VIEW'):
+        rot = context.space_data.region_3d.view_matrix.to_3x3().inverted().to_4x4()
+    else:
+        rot = Matrix()
+    align_matrix = loc * rot
+    return align_matrix
+
+# sets bezier handles to auto
+def setBezierHandles(obj, mode = 'AUTOMATIC'):
+    scene = bpy.context.scene
+    if obj.type != 'CURVE':
+        return
+    scene.objects.active = obj
+    bpy.ops.object.mode_set(mode='EDIT', toggle=True)
+    bpy.ops.curve.select_all(action='SELECT')
+    bpy.ops.curve.handle_type_set(type=mode)
+    bpy.ops.object.mode_set(mode='OBJECT', toggle=True)
+
+# get array of vertcoordinates acording to splinetype
+def vertsToPoints(Verts, splineType):
+    # main vars
+    vertArray = []
+
+    # array for BEZIER spline output (V3)
+    if splineType == 'BEZIER':
+        for v in Verts:
+            vertArray += v
+
+    # array for non-BEZIER output (V4)
+    else:
+        for v in Verts:
+            vertArray += v
+            if splineType == 'NURBS':
+                vertArray.append(1) # for NURBS w=1
+            else: # for POLY w=0
+                vertArray.append(0)
+
+    return vertArray
+
+# create new CurveObject from vertarray and splineType
+# def createCurve(vertArray, self, align_matrix):
+    # something
+
+##------------------------------------------------------------
 # Main Function
 def create_torus_knot(self, context):
-    verts = Torus_Knot(self)
+    aName = "Torus Knot %i x %i" % (self.torus_p, self.torus_q)
+    # create curve
+    curve_data = bpy.data.curves.new(name=aName, type='CURVE')
+    
+    # setup materials for the links
+    if self.use_colors:
+        addLinkColors(self, curve_data)
 
-    curve_data = bpy.data.curves.new(name='Torus Knot', type='CURVE')
-    spline = curve_data.splines.new(type='NURBS')
-    spline.points.add(int(len(verts)*0.25 - 1))
-    spline.points.foreach_set('co', verts)
-    spline.use_endpoint_u = True
-    spline.use_cyclic_u = True
-    spline.order_u = 4
+    # create torus knot link(s)
+    if self.multiple_links:
+        links = gcd(self.torus_p, self.torus_q);
+    else:
+        links = 1;
+
+    for l in range(links):
+        # get vertices for the current link
+        verts = Torus_Knot(self, l)
+    
+        # output splineType 'POLY' 'NURBS' 'BEZIER'
+        splineType = self.outputType    
+        
+        # turn verts into array (based on spline type)
+        vertArray = vertsToPoints(verts, splineType)
+
+        # create spline from vertArray (based on spline type)
+        spline = curve_data.splines.new(type=splineType)
+        if splineType == 'BEZIER':
+            spline.bezier_points.add(int(len(vertArray)*1.0/3-1))
+            spline.bezier_points.foreach_set('co', vertArray)
+        else:
+            spline.points.add(int(len(vertArray)*1.0/4 - 1))
+            spline.points.foreach_set('co', vertArray)
+            spline.use_endpoint_u = True
+
+        # set curve Options
+        spline.use_cyclic_u = True
+        spline.order_u = 4
+        # set a color per link
+        if self.use_colors:
+            spline.material_index=l
+
     curve_data.dimensions = '3D'
 
-    if self.geo_surf:
+    # create surface ?
+    if self.geo_surface:
         curve_data.bevel_depth = self.geo_bDepth
         curve_data.bevel_resolution = self.geo_bRes
         curve_data.fill_mode = 'FULL'
@@ -91,114 +211,371 @@ def create_torus_knot(self, context):
         #curve_data.offset = self.geo_width # removed, somehow screws things up all of a sudden
         curve_data.resolution_u = self.geo_res
 
-    new_obj = object_data_add(context, curve_data, operator=self)
+    # new_obj = object_data_add(context, curve_data, operator=self)
+    new_obj = bpy.data.objects.new(aName, curve_data)
+
+    # set object in scene
+    scene = bpy.context.scene
+    scene.objects.link(new_obj) # place in active scene
+    new_obj.select = True # set as selected
+    scene.objects.active = new_obj  # set as active
+    new_obj.matrix_world = self.align_matrix # apply matrix
+
+    # set bezier handles
+    if splineType == 'BEZIER':
+        setBezierHandles(new_obj, self.handleType)
+
+    return
+
+# Create materials to be assigned to each TK link 
+def addLinkColors(self, curveData):
+    # some predefined colors for torus knot chained links
+    colors = []
+    colors += [ [0.0, 0.0, 1.0] ]
+    colors += [ [0.0, 1.0, 0.0] ]
+    colors += [ [1.0, 0.0, 0.0] ]
+    colors += [ [1.0, 0.0, 1.0] ]
+    colors += [ [0.0, 1.0, 1.0] ]
+    colors += [ [1.0, 1.0, 0.0] ]
+
+    me = curveData
+    mat_offset = len(me.materials)
+    mat_count = gcd(self.torus_p, self.torus_q)
+    mats = []
+    for i in range(mat_count):
+        matName = "TorusKnot-Link-%i" % i
+        matListNames = bpy.data.materials.keys()
+        if matName not in matListNames:
+            print("Creating new material : %s" % matName)
+            mat = bpy.data.materials.new(matName)
+            if self.random_colors:
+                mat.diffuse_color = random(), random(), random()
+            else:
+                mat.diffuse_color = colors[min(i, len(colors)-1)]
+        else:
+            print("Material %s already exists" % matName)
+            mat = bpy.data.materials[matName]
+        
+        mat.diffuse_color.s = self.saturation
+        me.materials.append(mat)
 
 
 class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     """"""
     bl_idname = "curve.torus_knot_plus"
-    bl_label = "Torus Knot +"
+    bl_label = "Torus Knot ++"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
-    bl_description = "adds many types of knots"
+    bl_description = "Adds many types of knots"
 
-    #### general options
-    options_plus = BoolProperty(name="plus options",
+    def mode_update_callback(self, context):
+        # keep the reciprocal radii sets (R,r)/(iR,oR) in sync
+        if self.mode == 'EXT_INT':
+            self.torus_eR = self.torus_R + self.torus_r
+            self.torus_iR = self.torus_R - self.torus_r
+
+    # align_matrix for the invoke
+    align_matrix = None
+
+    #### GENERAL options
+    options_plus = BoolProperty(
+                name="plus options",
                 default=False,
                 description="Show more options (the plus part)")
 
-    #### GEO Options
-    geo_surf = BoolProperty(name="Surface",
+    #### COLOR options
+    use_colors = BoolProperty(
+                name="Use Colors",
+                default=False,
+                description="Show torus links in colors")
+
+    random_colors = BoolProperty(
+                name="Randomize Colors",
+                default=False,
+                description="Randomize link colors")
+
+    saturation = FloatProperty(
+                name="Saturation",
+                default=0.75,
+                min=0.0, max=1.0,
+                description="Color saturation")
+
+    #### SURFACE Options
+    geo_surface = BoolProperty(
+                name="Surface",
                 default=True)
-    geo_bDepth = FloatProperty(name="bevel",
-                default=0.08,
-                min=0, soft_min=0)
-    geo_bRes = IntProperty(name="bevel res",
+
+    geo_bDepth = FloatProperty(
+                name="Bevel Depth",
+                default=0.02,
+                min=0, soft_min=0,
+                description="Bevel Depth")
+
+    geo_bRes = IntProperty(
+                name="Bevel Resolution",
                 default=2,
                 min=0, soft_min=0,
-                max=4, soft_max=4)
-    geo_extrude = FloatProperty(name="extrude",
-                default=0.0,
-                min=0, soft_min=0)
-    geo_res = IntProperty(name="resolution",
-                default=12,
-                min=1, soft_min=1)
+                max=5, soft_max=5,
+                description="Bevel Resolution")
 
+    geo_extrude = FloatProperty(
+                name="Extrude",
+                default=0.0,
+                min=0, soft_min=0,
+                description="Amount of curve extrusion.")
+
+    geo_res = IntProperty(
+                name="Segment Resolution",
+                default=12,
+                min=1, soft_min=1,
+                description="Curve Subdivisions per segment.")
 
     #### Parameters
-    torus_res = IntProperty(name="Resoulution",
+    torus_res = IntProperty(
+                name="Resolution",
                 default=100,
                 min=3, soft_min=3,
-                description='Resolution, Number of controlverticies')
-    torus_p = IntProperty(name="p",
+                description='Number of control vertices')
+    
+    torus_p = IntProperty(
+                name="p",
                 default=2,
                 min=1, soft_min=1,
                 #max=1, soft_max=1,
-                description="p")
-    torus_q = IntProperty(name="q",
+                description="Number of REVOLUTIONs around the torus hole before closing the knot.")
+    
+    torus_q = IntProperty(
+                name="q",
                 default=3,
                 min=1, soft_min=1,
                 #max=1, soft_max=1,
-                description="q")
-    torus_w = FloatProperty(name="Height",
-                default=1,
-                #min=0, soft_min=0,
+                description="Number of SPINs through the torus hole before closing the knot.")
+  
+    torus_l = IntProperty(
+                name="λ",
+                default=0,
+                min=0, soft_min=0,
                 #max=1, soft_max=1,
-                description="Height in Z")
-    torus_h = FloatProperty(name="Scale",
-                default=1,
-                #min=0, soft_min=0,
-                #max=1, soft_max=1,
-                description="Scale, in XY")
-    torus_u = IntProperty(name="u",
+                description="Number of vertical WAVEs before closing the knot.")
+ 
+    flip_p = BoolProperty(
+                name="Flip p",
+                default=False,
+                description="Flip REVOLUTION direction")
+
+    flip_q = BoolProperty(
+                name="Flip q",
+                default=False,
+                description="Flip SPIN direction")
+
+    flip_l = BoolProperty(
+                name="Flip λ",
+                default=False,
+                description="Flip WAVE direction")
+
+    multiple_links = BoolProperty(
+                name="Multiple Links",
+                default=True,
+                description="Generate ALL links or just ONE when q and q are not co-primes.")
+
+    torus_h = FloatProperty(
+                name="Height",
+                default=1.0,
+                min=0.0, max=100.0,
+                description="Scale along Z")
+
+    torus_u = IntProperty(
+                name="p multiplier",
                 default=1,
                 min=1, soft_min=1,
                 #max=1, soft_max=1,
-                description="u")
-    torus_v = IntProperty(name="v",
+                description="p multiplier")
+
+    torus_v = IntProperty(
+                name="q multiplier",
                 default=1,
                 min=1, soft_min=1,
                 #max=1, soft_max=1,
-                description="v")
-    torus_rounds = IntProperty(name="Rounds",
-                default=2,
-                min=1, soft_min=1,
-                #max=1, soft_max=1,
-                description="Rounds")
+                description="q multiplier")
+
+    # torus_rounds = IntProperty(
+    #             name="Rounds",
+    #             default=2,
+    #             min=1, soft_min=1,
+    #             #max=1, soft_max=1,
+    #             description="Rounds")
+
+    mode = bpy.props.EnumProperty(
+                name="Torus Dimensions",
+                items=(("MAJOR_MINOR", "Major/Minor",
+                        "Use the major/minor radii for torus dimensions"),
+                       ("EXT_INT", "Exterior/Interior",
+                        "Use the exterior/interior radii for torus dimensions")),
+                update=mode_update_callback)
+
+    torus_R = FloatProperty(
+                name="Major Radius",
+                min=0.00, max=100.0, 
+                # soft_min=1, soft_max=1,
+                default=1.0,
+                subtype='DISTANCE',
+                unit='LENGTH',
+                description="Radius from the torus origin to the center of the cross section")
+
+    torus_r = FloatProperty(
+                name="Minor Radius",
+                min=0.00, max=100.0, 
+                # soft_min=1, soft_max=1,
+                default=.25,
+                subtype='DISTANCE',
+                unit='LENGTH',
+                description="Radius of the torus' cross section")
+
+    torus_iR = FloatProperty(
+                name="Interior Radius",
+                min=0.00, max=100.0, 
+                # soft_min=1, soft_max=1,
+                default=.75,
+                subtype='DISTANCE',
+                unit='LENGTH',
+                description="Total interior radius of the torus")
+
+    torus_eR = FloatProperty(
+                name="Exterior Radius",
+                min=0.00, max=100.0, 
+                # soft_min=1, soft_max=1,
+                default=1.25,
+                subtype='DISTANCE',
+                unit='LENGTH',
+                description="Total exterior radius of the torus")
+
+    torus_s = FloatProperty(
+                name="Scale",
+                min=0.01, max=100.0, 
+                # soft_min=1, soft_max=1,
+                default=1.00,
+                description="Scale factor to multiply the radii.")
+
+    SplineTypes = [
+                ('POLY', 'Poly', 'POLY'),
+                ('NURBS', 'Nurbs', 'NURBS'),
+                ('BEZIER', 'Bezier', 'BEZIER')]
+
+    outputType = EnumProperty(
+                name="Output splines",
+                description="Type of splines to output",
+                default='BEZIER',
+                items=SplineTypes)
+
+    bezierHandles = [
+                ('VECTOR', 'Vector', 'VECTOR'),
+                ('AUTOMATIC', 'Auto', 'AUTOMATIC')]
+
+    handleType = EnumProperty(
+                name="Handle type",
+                description="Bezier handle type",
+                default='AUTOMATIC',
+                items=bezierHandles)
+
+    adaptive_resolution = BoolProperty(
+                name="Adaptive Resolution",
+                default=False,
+                description="Auto adjust curve resolution based on knot length")
 
     ##### DRAW #####
     def draw(self, context):
         layout = self.layout
 
-        # general options
-        layout.label(text="Torus Knot Parameters:")
+        # extra parameters toggle
+        layout.prop(self, 'options_plus', text="Extra Options")
 
-        # Parameters
+        # Torus Knot Parameters
+        col = layout.column()
+        col.label(text="Torus Knot Parameters:")
         box = layout.box()
-        box.prop(self, 'torus_res')
-        box.prop(self, 'torus_w')
-        box.prop(self, 'torus_h')
-        box.prop(self, 'torus_p')
-        box.prop(self, 'torus_q')
-        box.prop(self, 'options_plus')
+        row = box.row()
+        row.column().prop(self, 'torus_p')
+        row.column().prop(self, 'flip_p')
+        row = box.row()
+        row.column().prop(self, 'torus_q')
+        row.column().prop(self, 'flip_q')
+        box.prop(self, 'multiple_links')
+        
         if self.options_plus:
+            # row = box.row()
+            # row.column().prop(self, 'torus_l')
+            # row.column().prop(self, 'flip_l')
+            box = box.box()
             box.prop(self, 'torus_u')
             box.prop(self, 'torus_v')
-            box.prop(self, 'torus_rounds')
+            # box.prop(self, 'torus_rounds')
 
-        # surface Options
+        # DIMENSIONS Options
+        col = layout.column(align=True)
+        col.label(text="Torus Dimensions:")
+        box = layout.box()
+        col = box.column(align=True)
+        col.row().prop(self, "mode", expand=True)
+
+        if self.mode == 'MAJOR_MINOR':
+            col = box.column(align=True)
+            col.prop(self, "torus_R", text="Major Radius")
+
+            col = box.column(align=True)
+            col.prop(self, "torus_r", text="Minor Radius")
+        else: # EXTERIOR-INTERIOR
+            col = box.column(align=True)
+            col.prop(self, "torus_eR", text="Exterior Radius")
+
+            col = box.column(align=True)
+            col.prop(self, "torus_iR", text="Interior Radius")
+
+        if self.options_plus:
+            box = box.box()
+            box.prop(self, 'torus_s')
+            box.prop(self, 'torus_h')
+
+        # CURVE options
+        col = layout.column(align=True)
+        col.label(text="Curve Options:")
+        box = layout.box()
+
+        col = box.column()
+        col.label(text="Output Curve Type:")
+        col.row().prop(self, 'outputType', expand=True)
+        box.prop(self, 'torus_res', text="Curve Resolution") 
+        box.prop(self, 'geo_res')
+
+        if self.options_plus:
+            box = box.box()
+            box.prop(self, 'adaptive_resolution')
+    
+        # SURFACE Options
         col = layout.column()
         col.label(text="Geometry Options:")
         box = layout.box()
-        box.prop(self, 'geo_surf')
-        if self.geo_surf:
+        box.prop(self, 'geo_surface')
+        if self.geo_surface:
             box.prop(self, 'geo_bDepth')
             box.prop(self, 'geo_bRes')
             box.prop(self, 'geo_extrude')
-            box.prop(self, 'geo_res')
-
+           
+        # COLOR options
         col = layout.column()
-        col.prop(self, 'location')
-        col.prop(self, 'rotation')
+        col.label(text="Color Options:")
+        box = layout.box()
+        box.prop(self, 'use_colors')
+        if self.use_colors and self.options_plus:
+            box = box.box()
+            box.prop(self, 'random_colors')
+            box.prop(self, 'saturation')
+
+        # TRANSFORM options
+        col = layout.column()
+        col.label(text="Transform Options:")
+        box = col.box()
+        box.prop(self, 'location')
+        box.prop(self, 'rotation')
+        # col.prop(self, 'scale')
 
     ##### POLL #####
     @classmethod
@@ -207,17 +584,36 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     ##### EXECUTE #####
     def execute(self, context):
+        if self.mode == 'EXT_INT':
+            # adjust reciprocal radii
+            self.torus_R = (self.torus_eR + self.torus_iR)*0.5
+            self.torus_r = (self.torus_eR - self.torus_iR)*0.5
+
+        if self.adaptive_resolution:
+            p = self.torus_p
+            q = self.torus_q
+            R = self.torus_R
+            r = self.torus_r
+            links = gcd(p,q)
+            # approximation (can be improved with a better torus knot length approximation)
+            self.torus_res = (p*R+q*r+2)/links * 20 
+
         # turn off undo
         undo = bpy.context.user_preferences.edit.use_global_undo
         bpy.context.user_preferences.edit.use_global_undo = False
 
-        if not self.options_plus:
-            self.torus_rounds = self.torus_p
-
-        #recoded for add_utils
+        # create the curve
         create_torus_knot(self, context)
 
         # restore pre operator undo state
         bpy.context.user_preferences.edit.use_global_undo = undo
+
+        return {'FINISHED'}
+
+    ##### INVOKE #####
+    def invoke(self, context, event):
+        # store creation_matrix
+        self.align_matrix = align_matrix(context)
+        self.execute(context)
 
         return {'FINISHED'}
