@@ -74,15 +74,28 @@ def Torus_Knot(self, linkIndex=0):
     R = self.torus_R * s # major radius (scaled)
     r = self.torus_r * s # minor radius (scaled)
     
-    # revolve until closing ONE link (no overlapping curve when p & q are not co-primes)
-    links = gcd(p,q)
-    rounds = 1.0 / links
-
-    angle = 2.0*pi*rounds
-    da = angle/(res-1)
-
-    linkPhase = 2.0*pi/q * linkIndex
+    # number of decoupled links when (p,q) are NOT co-primes
+    links = gcd(p,q) # = 1 when (p,q) are co-primes
     
+    # parametrized angle increment (cached outside of the loop for performance)
+    # NOTE: the total angle is divided by number of decoupled links to ensure 
+    #       the curve does not overlap when (p,q) are not co-primes
+    da = 2*pi/links/(N-1) 
+
+    # link phase : each decoupled link is phased equally around the torus center
+    # NOTE: linkIndex value is in [0, links-1]
+    linkPhase = 2*pi/q * linkIndex # = 0 when there is just ONE link
+        
+    # user defined phasing
+    if self.options_plus:
+        rPhase = self.torus_rP # user defined revolution phase
+        sPhase = self.torus_sP # user defined spin phase
+    else:
+        rPhase = 0
+        sPhase = 0
+
+    rPhase += linkPhase # total revolution phase of the current link
+
     if DEBUG:
         print("")
         print("Link: %i of %i" % (linkIndex, links))
@@ -98,10 +111,11 @@ def Torus_Knot(self, linkIndex=0):
 
     # create the 3D point array for the current link
     newPoints = []
-    for i in range(res-1):
-        a = (i*da) 
-        theta = p*a*u + linkPhase # revolutions
-        phi   = q*a*v # spins
+    for n in range(N-1):
+        # t = 2*pi / links * n/(N-1) with: da = 2*pi/links/(N-1) => t = n * da
+        t = n * da
+        theta = p*t*u + rPhase # revolution angle
+        phi   = q*t*v + sPhase # spin angle
 
         x = (R + r*cos(phi)) * cos(theta)
         y = (R + r*cos(phi)) * sin(theta)
@@ -383,6 +397,18 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 min=1, soft_min=1,
                 description="q multiplier")
 
+    torus_rP = FloatProperty(
+                name="Revolution Phase",
+                default=0.0,
+                min=0.0, soft_min=0.0,
+                description="Phase revolutions by this radian amount.")
+
+    torus_sP = FloatProperty(
+                name="Spin Phase",
+                default=0.0,
+                min=0.0, soft_min=0.0,
+                description="Phase spins by this radian amount.")
+
     #### TORUS DIMENSIONS options
     mode = bpy.props.EnumProperty(
                 name="Torus Dimensions",
@@ -497,6 +523,8 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             box = box.box()
             box.prop(self, 'torus_u')
             box.prop(self, 'torus_v')
+            box.prop(self, 'torus_rP')
+            box.prop(self, 'torus_sP')
 
         # TORUS DIMENSIONS options
         col = layout.column(align=True)
@@ -590,9 +618,9 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             r = self.torus_r
             links = gcd(p,q)
             # get an approximate TK length 
-            maxTKLen = 2.0*pi*sqrt(p*p*(R+r)*(R+r) + q*q*r*r) # upper bound approximation
-            minTKLen = 2.0*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
-            avgTKLen = 0.5*(minTKLen + maxTKLen) # average approximation
+            maxTKLen = 2*pi*sqrt(p*p*(R+r)*(R+r) + q*q*r*r) # upper bound approximation
+            minTKLen = 2*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
+            avgTKLen = (minTKLen + maxTKLen)/2 # average approximation
             if DEBUG: print("Approximate average TK length = %.2f" % avgTKLen)
             self.torus_res = avgTKLen/links * 8 # x N factor = control points per unit length 
 
