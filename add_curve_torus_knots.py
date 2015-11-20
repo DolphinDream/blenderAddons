@@ -54,19 +54,18 @@ def gcd(a, b):
 ####################### Knot Definitions ###############################
 ########################################################################
 def Torus_Knot(self, linkIndex=0):
-    p = self.torus_p # revolution count
-    q = self.torus_q # spin count
+    p = self.torus_p # revolution count (around the torus center)
+    q = self.torus_q # spin count (around the torus tube)
 
-    res = self.torus_res # curve resolution
+    N = self.torus_res # curve resolution (number of control points)
 
     # use plus options only when they are enabled
     if self.options_plus:
         u = self.torus_u # p multiplier
         v = self.torus_v # q multiplier
-
         h = self.torus_h # height (scale along Z)
         s = self.torus_s # torus scale (radii scale factor)
-    else: 
+    else: # don't use plus setings
         u = 1
         v = 1
         h = 1
@@ -86,12 +85,12 @@ def Torus_Knot(self, linkIndex=0):
     
     if DEBUG:
         print("")
-        print("Link %i of %i" % (linkIndex, links))
-        print("gcd is %i" % links)
-        print("p is %i" % p)
-        print("q is %i" % q)
-        print("link phase is %.2f deg" % (linkPhase * 180/pi))
-        print("link phase is %.2f rad" % linkPhase)
+        print("Link: %i of %i" % (linkIndex, links))
+        print("gcd = %i" % links)
+        print("p = %i" % p)
+        print("q = %i" % q)
+        print("link phase = %.2f deg" % (linkPhase * 180/pi))
+        print("link phase = %.2f rad" % linkPhase)
 
     # flip directions ?
     if self.flip_p: p*=-1
@@ -108,7 +107,8 @@ def Torus_Knot(self, linkIndex=0):
         y = (R + r*cos(phi)) * sin(theta)
         z = r*sin(phi) * h
 
-        # append 3D point (adjusted later as needed to 4D for POLY and NURBS)
+        # append 3D point 
+        # NOTE : the array is adjusted later as needed to 4D for POLY and NURBS
         newPoints.append([x,y,z]) 
 
     return newPoints
@@ -127,7 +127,7 @@ def align_matrix(context):
     align_matrix = loc * rot
     return align_matrix
 
-# sets bezier handles to auto
+# sets BEZIER handles to auto
 def setBezierHandles(obj, mode = 'AUTOMATIC'):
     scene = bpy.context.scene
     if obj.type != 'CURVE':
@@ -189,7 +189,7 @@ def create_torus_knot(self, context):
         # output splineType 'POLY' 'NURBS' or 'BEZIER'
         splineType = self.outputType    
         
-        # turn verts into array (based on spline type)
+        # turn verts into proper array (based on spline type)
         vertArray = vertsToPoints(verts, splineType)
 
         # create spline from vertArray (based on spline type)
@@ -202,7 +202,7 @@ def create_torus_knot(self, context):
             spline.points.foreach_set('co', vertArray)
             spline.use_endpoint_u = True
 
-        # set curve Options
+        # set curve options
         spline.use_cyclic_u = True
         spline.order_u = 4
 
@@ -312,7 +312,8 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     #### SURFACE Options
     geo_surface = BoolProperty(
                 name="Surface",
-                default=True)
+                default=True,
+                description="Create surface.")
 
     geo_bDepth = FloatProperty(
                 name="Bevel Depth",
@@ -339,7 +340,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 min=1, soft_min=1,
                 description="Curve Subdivisions per segment.")
 
-    #### Parameters
+    #### TORUS KNOT Options
     torus_res = IntProperty(
                 name="Resolution",
                 default=100,
@@ -350,14 +351,12 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="p",
                 default=2,
                 min=1, soft_min=1,
-                #max=1, soft_max=1,
                 description="Number of REVOLUTIONs around the torus hole before closing the knot.")
     
     torus_q = IntProperty(
                 name="q",
                 default=3,
                 min=1, soft_min=1,
-                #max=1, soft_max=1,
                 description="Number of SPINs through the torus hole before closing the knot.")
  
     flip_p = BoolProperty(
@@ -385,16 +384,15 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="p multiplier",
                 default=1,
                 min=1, soft_min=1,
-                #max=1, soft_max=1,
                 description="p multiplier")
 
     torus_v = IntProperty(
                 name="q multiplier",
                 default=1,
                 min=1, soft_min=1,
-                #max=1, soft_max=1,
                 description="q multiplier")
 
+    #### TORUS DIMENSIONS options
     mode = bpy.props.EnumProperty(
                 name="Torus Dimensions",
                 items=(("MAJOR_MINOR", "Major/Minor",
@@ -446,6 +444,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=1.00,
                 description="Scale factor to multiply the radii.")
 
+    #### CURVE options
     SplineTypes = [
                 ('POLY', 'Poly', 'POLY'),
                 ('NURBS', 'Nurbs', 'NURBS'),
@@ -479,7 +478,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         # extra parameters toggle
         layout.prop(self, 'options_plus', text="Extra Options")
 
-        # Torus Knot Parameters
+        # TORUS KNOT Parameters
         col = layout.column()
         col.label(text="Torus Knot Parameters:")
         box = layout.box()
@@ -496,7 +495,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             box.prop(self, 'torus_u')
             box.prop(self, 'torus_v')
 
-        # DIMENSIONS Options
+        # TORUS DIMENSIONS options
         col = layout.column(align=True)
         col.label(text="Torus Dimensions:")
         box = layout.box()
@@ -541,7 +540,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             box = box.box()
             box.prop(self, 'adaptive_resolution')
     
-        # SURFACE Options
+        # SURFACE options
         col = layout.column()
         col.label(text="Geometry Options:")
         box = layout.box()
@@ -576,7 +575,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     ##### EXECUTE #####
     def execute(self, context):
         if self.mode == 'EXT_INT':
-            # adjust reciprocal radii
+            # adjust reciprocal radii (R,r) <-> (eR,iR)
             self.torus_R = (self.torus_eR + self.torus_iR)*0.5
             self.torus_r = (self.torus_eR - self.torus_iR)*0.5
 
