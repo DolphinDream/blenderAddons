@@ -341,12 +341,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 description="Curve Subdivisions per segment.")
 
     #### TORUS KNOT Options
-    torus_res = IntProperty(
-                name="Resolution",
-                default=100,
-                min=3, soft_min=3,
-                description='Number of control vertices')
-    
     torus_p = IntProperty(
                 name="p",
                 default=2,
@@ -373,12 +367,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Multiple Links",
                 default=True,
                 description="Generate ALL links or just ONE when q and q are not co-primes.")
-
-    torus_h = FloatProperty(
-                name="Height",
-                default=1.0,
-                min=0.0, max=100.0,
-                description="Scale along Z")
 
     torus_u = IntProperty(
                 name="p multiplier",
@@ -444,7 +432,19 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=1.00,
                 description="Scale factor to multiply the radii.")
 
+    torus_h = FloatProperty(
+                name="Height",
+                default=1.0,
+                min=0.0, max=100.0,
+                description="Scale along Z")
+
     #### CURVE options
+    torus_res = IntProperty(
+                name="Resolution",
+                default=100,
+                min=3, soft_min=3,
+                description='Number of control vertices')
+
     SplineTypes = [
                 ('POLY', 'Poly', 'POLY'),
                 ('NURBS', 'Nurbs', 'NURBS'),
