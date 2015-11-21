@@ -65,7 +65,7 @@ def Torus_Knot(self, linkIndex=0):
         v = self.torus_v # q multiplier
         h = self.torus_h # height (scale along Z)
         s = self.torus_s # torus scale (radii scale factor)
-    else: # don't use plus setings
+    else: # don't use plus settings
         u = 1
         v = 1
         h = 1
@@ -90,7 +90,7 @@ def Torus_Knot(self, linkIndex=0):
     if self.options_plus:
         rPhase = self.torus_rP # user defined revolution phase
         sPhase = self.torus_sP # user defined spin phase
-    else:
+    else: # don't use plus settings
         rPhase = 0
         sPhase = 0
 
@@ -128,20 +128,27 @@ def Torus_Knot(self, linkIndex=0):
     return newPoints
 
 
-##------------------------------------------------------------
-# calculates the matrix for the new object
-# depending on user pref
-def align_matrix(context):
-    loc = Matrix.Translation(context.scene.cursor_location)
+# calculate the matrix for the new object (based on user preferences)
+def align_matrix(self, context):
+    if self.absolute_location:
+        loc = Matrix.Translation(Vector((0,0,0)))
+    else:
+        loc = Matrix.Translation(context.scene.cursor_location)
+
+    # user defined location & translation
+    userLoc = Matrix.Translation(self.location)
+    userRot = self.rotation.to_matrix().to_4x4()
+
     obj_align = context.user_preferences.edit.object_align
     if (context.space_data.type == 'VIEW_3D' and obj_align == 'VIEW'):
         rot = context.space_data.region_3d.view_matrix.to_3x3().inverted().to_4x4()
     else:
         rot = Matrix()
-    align_matrix = loc * rot
+    align_matrix = userLoc * loc * rot * userRot
     return align_matrix
 
-# sets BEZIER handles to auto
+
+# set BEZIER handles to auto
 def setBezierHandles(obj, mode = 'AUTOMATIC'):
     scene = bpy.context.scene
     if obj.type != 'CURVE':
@@ -172,10 +179,6 @@ def vertsToPoints(Verts, splineType):
                 vertArray.append(0)
 
     return vertArray
-
-# create new CurveObject from vertarray and splineType
-# def createCurve(vertArray, self, align_matrix):
-    # something
 
 ##------------------------------------------------------------
 # Main Function
@@ -235,7 +238,6 @@ def create_torus_knot(self, context):
         #curve_data.offset = self.geo_width # removed, somehow screws things up all of a sudden
         curve_data.resolution_u = self.geo_res
 
-    # new_obj = object_data_add(context, curve_data, operator=self)
     new_obj = bpy.data.objects.new(aName, curve_data)
 
     # set object in the scene
@@ -308,6 +310,11 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="plus options",
                 default=False,
                 description="Show more options (the plus part)")
+
+    absolute_location = BoolProperty(
+                name= "Absolute Location",
+                default=False,
+                description="Set absolute location instead of relative to 3D cursor.")
 
     #### COLOR options
     use_colors = BoolProperty(
@@ -596,17 +603,18 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         col.label(text="Transform Options:")
         box = col.box()
         box.prop(self, 'location')
+        box.prop(self, 'absolute_location')
         box.prop(self, 'rotation')
 
     ##### POLL #####
     @classmethod
     def poll(cls, context):
         return context.scene != None
-
+# 
     ##### EXECUTE #####
     def execute(self, context):
         if self.mode == 'EXT_INT':
-            # adjust reciprocal radii (R,r) <-> (eR,iR)
+            # adjust reciprocal radii (R,r) <=> (eR,iR)
             self.torus_R = (self.torus_eR + self.torus_iR)*0.5
             self.torus_r = (self.torus_eR - self.torus_iR)*0.5
 
@@ -624,6 +632,9 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             if DEBUG: print("Approximate average TK length = %.2f" % avgTKLen)
             self.torus_res = avgTKLen/links * 8 # x N factor = control points per unit length 
 
+        # update align matrix
+        self.align_matrix = align_matrix(self, context)
+
         # turn off undo
         undo = bpy.context.user_preferences.edit.use_global_undo
         bpy.context.user_preferences.edit.use_global_undo = False
@@ -639,7 +650,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     ##### INVOKE #####
     def invoke(self, context, event):
         # store creation_matrix
-        self.align_matrix = align_matrix(context)
+        self.align_matrix = align_matrix(self, context)
         self.execute(context)
 
         return {'FINISHED'}
