@@ -228,15 +228,15 @@ def create_torus_knot(self, context):
             spline.material_index = l
 
     curve_data.dimensions = '3D'
+    curve_data.resolution_u = self.segment_res
 
     # create surface ?
     if self.geo_surface:
+        curve_data.fill_mode = 'FULL'
         curve_data.bevel_depth = self.geo_bDepth
         curve_data.bevel_resolution = self.geo_bRes
-        curve_data.fill_mode = 'FULL'
         curve_data.extrude = self.geo_extrude
         #curve_data.offset = self.geo_width # removed, somehow screws things up all of a sudden
-        curve_data.resolution_u = self.geo_res
 
     new_obj = bpy.data.objects.new(aName, curve_data)
 
@@ -358,12 +358,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 min=0, soft_min=0,
                 description="Amount of curve extrusion.")
 
-    geo_res = IntProperty(
-                name="Segment Resolution",
-                default=12,
-                min=1, soft_min=1,
-                description="Curve Subdivisions per segment.")
-
     #### TORUS KNOT Options
     torus_p = IntProperty(
                 name="p",
@@ -481,6 +475,12 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 min=3, soft_min=3,
                 description='Number of control vertices')
 
+    segment_res = IntProperty(
+                name="Segment Resolution",
+                default=12,
+                min=1, soft_min=1,
+                description="Curve subdivisions per segment.")
+
     SplineTypes = [
                 ('POLY', 'Poly', 'POLY'),
                 ('NURBS', 'Nurbs', 'NURBS'),
@@ -572,7 +572,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         # deactivate the "curve resolution" if "adaptive resolution" is enabled
         depends.enabled = not (self.options_plus and self.adaptive_resolution)
 
-        box.prop(self, 'geo_res')
+        box.prop(self, 'segment_res')
 
         if self.options_plus:
             box = box.box()
