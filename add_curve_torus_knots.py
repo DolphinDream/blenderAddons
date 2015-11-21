@@ -236,7 +236,7 @@ def create_torus_knot(self, context):
         curve_data.bevel_depth = self.geo_bDepth
         curve_data.bevel_resolution = self.geo_bRes
         curve_data.extrude = self.geo_extrude
-        #curve_data.offset = self.geo_width # removed, somehow screws things up all of a sudden
+        curve_data.offset = self.geo_offset
 
     new_obj = bpy.data.objects.new(aName, curve_data)
 
@@ -357,6 +357,12 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=0.0,
                 min=0, soft_min=0,
                 description="Amount of curve extrusion.")
+
+    geo_offset = FloatProperty(
+                name="Offset",
+                default=0.0,
+                min=0, soft_min=0,
+                description="Offset the surface relative to the curve.")
 
     #### TORUS KNOT Options
     torus_p = IntProperty(
@@ -587,6 +593,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             box.prop(self, 'geo_bDepth')
             box.prop(self, 'geo_bRes')
             box.prop(self, 'geo_extrude')
+            box.prop(self, 'geo_offset')
            
         # COLOR options
         col = layout.column()
