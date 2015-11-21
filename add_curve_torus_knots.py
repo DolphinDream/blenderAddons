@@ -574,14 +574,11 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         depends=box.column()
         depends.prop(self, 'torus_res')
         # deactivate the "curve resolution" if "adaptive resolution" is enabled
-        depends.enabled = not (self.options_plus and self.adaptive_resolution)
+        depends.enabled = not self.adaptive_resolution
 
+        box.prop(self, 'adaptive_resolution')
         box.prop(self, 'segment_res')
 
-        if self.options_plus:
-            box = box.box()
-            box.prop(self, 'adaptive_resolution')
-    
         # SURFACE options
         col = layout.column()
         col.label(text="Geometry Options:")
@@ -623,7 +620,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             self.torus_R = (self.torus_eR + self.torus_iR)*0.5
             self.torus_r = (self.torus_eR - self.torus_iR)*0.5
 
-        if self.options_plus and self.adaptive_resolution:
+        if self.adaptive_resolution:
             # adjust curve resolution automatically based on (p,q,R,r) values
             p = self.torus_p
             q = self.torus_q
