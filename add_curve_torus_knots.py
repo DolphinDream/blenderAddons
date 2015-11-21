@@ -341,7 +341,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     geo_bDepth = FloatProperty(
                 name="Bevel Depth",
-                default=0.02,
+                default=0.04,
                 min=0, soft_min=0,
                 description="Bevel Depth.")
 
