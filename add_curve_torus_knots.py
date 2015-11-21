@@ -272,7 +272,7 @@ def addLinkColors(self, curveData):
         matName = "TorusKnot-Link-%i" % i
         matListNames = bpy.data.materials.keys()
         if matName not in matListNames:
-            print("Creating new material : %s" % matName)
+            if DEBUG: print("Creating new material : %s" % matName)
             mat = bpy.data.materials.new(matName)
             if self.options_plus and self.random_colors:
                 mat.diffuse_color = random(), random(), random()
@@ -281,7 +281,7 @@ def addLinkColors(self, curveData):
                 mat.diffuse_color = colors[cID]
                 mat.diffuse_color.s = 0.75
         else:
-            print("Material %s already exists" % matName)
+            if DEBUG: print("Material %s already exists" % matName)
             mat = bpy.data.materials[matName]
         
         if self.options_plus:
@@ -292,9 +292,9 @@ def addLinkColors(self, curveData):
 class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     """"""
     bl_idname = "curve.torus_knot_plus"
-    bl_label = "Torus Knot ++"
+    bl_label = "Torus Knot +"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
-    bl_description = "Adds many types of knots"
+    bl_description = "Adds many types of tours knots"
 
     def mode_update_callback(self, context):
         # keep the reciprocal radii sets (R,r)/(iR,eR) in sync
@@ -307,9 +307,9 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     #### GENERAL options
     options_plus = BoolProperty(
-                name="plus options",
+                name="Extra Options",
                 default=False,
-                description="Show more options (the plus part)")
+                description="Show more options (the plus part).")
 
     absolute_location = BoolProperty(
                 name= "Absolute Location",
@@ -320,18 +320,18 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     use_colors = BoolProperty(
                 name="Use Colors",
                 default=False,
-                description="Show torus links in colors")
+                description="Show torus links in colors.")
 
     random_colors = BoolProperty(
                 name="Randomize Colors",
                 default=False,
-                description="Randomize link colors")
+                description="Randomize link colors.")
 
     saturation = FloatProperty(
                 name="Saturation",
                 default=0.75,
                 min=0.0, max=1.0,
-                description="Color saturation")
+                description="Color saturation.")
 
     #### SURFACE Options
     geo_surface = BoolProperty(
@@ -343,14 +343,14 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Bevel Depth",
                 default=0.02,
                 min=0, soft_min=0,
-                description="Bevel Depth")
+                description="Bevel Depth.")
 
     geo_bRes = IntProperty(
                 name="Bevel Resolution",
                 default=2,
                 min=0, soft_min=0,
                 max=5, soft_max=5,
-                description="Bevel Resolution")
+                description="Bevel Resolution.")
 
     geo_extrude = FloatProperty(
                 name="Extrude",
@@ -380,29 +380,29 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     flip_p = BoolProperty(
                 name="Flip p",
                 default=False,
-                description="Flip REVOLUTION direction")
+                description="Flip REVOLUTION direction.")
 
     flip_q = BoolProperty(
                 name="Flip q",
                 default=False,
-                description="Flip SPIN direction")
+                description="Flip SPIN direction.")
 
     multiple_links = BoolProperty(
                 name="Multiple Links",
                 default=True,
-                description="Generate ALL links or just ONE when q and q are not co-primes.")
+                description="Generate ALL links or just ONE link when q and q are not co-primes.")
 
     torus_u = IntProperty(
                 name="p multiplier",
                 default=1,
                 min=1, soft_min=1,
-                description="p multiplier")
+                description="p multiplier.")
 
     torus_v = IntProperty(
                 name="q multiplier",
                 default=1,
                 min=1, soft_min=1,
-                description="q multiplier")
+                description="q multiplier.")
 
     torus_rP = FloatProperty(
                 name="Revolution Phase",
@@ -420,28 +420,26 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     mode = bpy.props.EnumProperty(
                 name="Torus Dimensions",
                 items=(("MAJOR_MINOR", "Major/Minor",
-                        "Use the major/minor radii for torus dimensions"),
+                        "Use the Major/Minor radii for torus dimensions."),
                        ("EXT_INT", "Exterior/Interior",
-                        "Use the exterior/interior radii for torus dimensions")),
+                        "Use the Exterior/Interior radii for torus dimensions.")),
                 update=mode_update_callback)
 
     torus_R = FloatProperty(
                 name="Major Radius",
                 min=0.00, max=100.0, 
-                # soft_min=1, soft_max=1,
                 default=1.0,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Radius from the torus origin to the center of the cross section")
+                description="Radius from the torus origin to the center of the cross section.")
 
     torus_r = FloatProperty(
                 name="Minor Radius",
                 min=0.00, max=100.0, 
-                # soft_min=1, soft_max=1,
                 default=.25,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Radius of the torus' cross section")
+                description="Radius of the torus' cross section.")
 
     torus_iR = FloatProperty(
                 name="Interior Radius",
@@ -450,7 +448,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=.75,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Total interior radius of the torus")
+                description="Total interior radius of the torus.")
 
     torus_eR = FloatProperty(
                 name="Exterior Radius",
@@ -459,7 +457,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=1.25,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Total exterior radius of the torus")
+                description="Total exterior radius of the torus.")
 
     torus_s = FloatProperty(
                 name="Scale",
@@ -472,14 +470,14 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Height",
                 default=1.0,
                 min=0.0, max=100.0,
-                description="Scale along Z")
+                description="Scale along the local Z axis.")
 
     #### CURVE options
     torus_res = IntProperty(
-                name="Resolution",
+                name="Curve Resolution",
                 default=100,
                 min=3, soft_min=3,
-                description='Number of control vertices')
+                description='Number of control vertices in the curve.')
 
     segment_res = IntProperty(
                 name="Segment Resolution",
@@ -494,7 +492,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     outputType = EnumProperty(
                 name="Output splines",
-                description="Type of splines to output",
+                description="Type of splines to output.",
                 default='BEZIER',
                 items=SplineTypes)
 
@@ -504,21 +502,21 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     handleType = EnumProperty(
                 name="Handle type",
-                description="Bezier handle type",
+                description="Bezier handle type.",
                 default='AUTOMATIC',
                 items=bezierHandles)
 
     adaptive_resolution = BoolProperty(
                 name="Adaptive Resolution",
                 default=False,
-                description="Auto adjust curve resolution based on knot length")
+                description="Auto adjust curve resolution based on TK length.")
 
     ##### DRAW #####
     def draw(self, context):
         layout = self.layout
 
         # extra parameters toggle
-        layout.prop(self, 'options_plus', text="Extra Options")
+        layout.prop(self, 'options_plus')
 
         # TORUS KNOT Parameters
         col = layout.column()
@@ -548,16 +546,16 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
         if self.mode == 'MAJOR_MINOR':
             col = box.column(align=True)
-            col.prop(self, "torus_R", text="Major Radius")
+            col.prop(self, "torus_R")
 
             col = box.column(align=True)
-            col.prop(self, "torus_r", text="Minor Radius")
+            col.prop(self, "torus_r")
         else: # EXTERIOR-INTERIOR
             col = box.column(align=True)
-            col.prop(self, "torus_eR", text="Exterior Radius")
+            col.prop(self, "torus_eR")
 
             col = box.column(align=True)
-            col.prop(self, "torus_iR", text="Interior Radius")
+            col.prop(self, "torus_iR")
 
         if self.options_plus:
             box = box.box()
@@ -574,7 +572,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         col.row().prop(self, 'outputType', expand=True)
 
         depends=box.column()
-        depends.prop(self, 'torus_res', text="Curve Resolution")
+        depends.prop(self, 'torus_res')
         # deactivate the "curve resolution" if "adaptive resolution" is enabled
         depends.enabled = not (self.options_plus and self.adaptive_resolution)
 
@@ -617,7 +615,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     @classmethod
     def poll(cls, context):
         return context.scene != None
-# 
+
     ##### EXECUTE #####
     def execute(self, context):
         if self.mode == 'EXT_INT':
