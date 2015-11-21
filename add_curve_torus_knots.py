@@ -266,9 +266,9 @@ def addLinkColors(self, curveData):
 
     me = curveData
     mat_offset = len(me.materials)
-    mat_count = gcd(self.torus_p, self.torus_q)
+    links = gcd(self.torus_p, self.torus_q)
     mats = []
-    for i in range(mat_count):
+    for i in range(links):
         matName = "TorusKnot-Link-%i" % i
         matListNames = bpy.data.materials.keys()
         if matName not in matListNames:
@@ -279,13 +279,15 @@ def addLinkColors(self, curveData):
             else:
                 cID = i % (len(colors))
                 mat.diffuse_color = colors[cID]
-                mat.diffuse_color.s = 0.75
         else:
             if DEBUG: print("Material %s already exists" % matName)
             mat = bpy.data.materials[matName]
         
         if self.options_plus:
             mat.diffuse_color.s = self.saturation
+        else:
+            mat.diffuse_color.s = 0.75
+
         me.materials.append(mat)
 
 
@@ -528,8 +530,12 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         row = box.row()
         row.column().prop(self, 'torus_q')
         row.column().prop(self, 'flip_q')
-        box.prop(self, 'multiple_links')
-        
+
+        links = gcd(self.torus_p, self.torus_q)
+        info = "Multiple Links"
+        if links > 1: info += "  ( " + str(links) + " )"
+        box.prop(self, 'multiple_links', text=info)
+
         if self.options_plus:
             box = box.box()
             box.prop(self, 'torus_u')
