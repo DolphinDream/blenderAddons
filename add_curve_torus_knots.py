@@ -630,7 +630,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             minTKLen = 2*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
             avgTKLen = (minTKLen + maxTKLen)/2 # average approximation
             if DEBUG: print("Approximate average TK length = %.2f" % avgTKLen)
-            self.torus_res = avgTKLen/links * 8 # x N factor = control points per unit length 
+            self.torus_res = max(3, avgTKLen/links * 8) # x N factor = control points per unit length 
 
         # update align matrix
         self.align_matrix = align_matrix(self, context)
