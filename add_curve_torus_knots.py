@@ -30,12 +30,12 @@ bl_info = {
     "category": "Add Curve"}
 '''
 
-##------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 #### import modules
 import bpy
 from bpy.props import *
-from math import sin, cos, pi
-from math import *
+from math import sin, cos, pi, sqrt
 from mathutils import *
 from bpy_extras.object_utils import AddObjectHelper, object_data_add
 from random import random
@@ -79,7 +79,7 @@ def Torus_Knot(self, linkIndex=0):
     
     # parametrized angle increment (cached outside of the loop for performance)
     # NOTE: the total angle is divided by number of decoupled links to ensure 
-    #       the curve does not overlap when (p,q) are not co-primes
+    #       the curve does not overlap with itself when (p,q) are not co-primes
     da = 2*pi/links/(N-1) 
 
     # link phase : each decoupled link is phased equally around the torus center
@@ -105,7 +105,7 @@ def Torus_Knot(self, linkIndex=0):
         print("link phase = %.2f deg" % (linkPhase * 180/pi))
         print("link phase = %.2f rad" % linkPhase)
 
-    # flip directions ?
+    # flip directions ? NOTE: flipping both is equivalent to no flip
     if self.flip_p: p*=-1
     if self.flip_q: q*=-1
 
@@ -127,8 +127,8 @@ def Torus_Knot(self, linkIndex=0):
 
     return newPoints
 
-
-# calculate the matrix for the new object (based on user preferences)
+# ------------------------------------------------------------------------------
+# Calculate the align matrix for the new object (based on user preferences)
 def align_matrix(self, context):
     if self.absolute_location:
         loc = Matrix.Translation(Vector((0,0,0)))
@@ -144,11 +144,12 @@ def align_matrix(self, context):
         rot = context.space_data.region_3d.view_matrix.to_3x3().inverted().to_4x4()
     else:
         rot = Matrix()
+
     align_matrix = userLoc * loc * rot * userRot
     return align_matrix
 
-
-# set BEZIER handles to auto
+# ------------------------------------------------------------------------------
+# Set curve BEZIER handles to auto
 def setBezierHandles(obj, mode = 'AUTOMATIC'):
     scene = bpy.context.scene
     if obj.type != 'CURVE':
@@ -159,7 +160,8 @@ def setBezierHandles(obj, mode = 'AUTOMATIC'):
     bpy.ops.curve.handle_type_set(type=mode)
     bpy.ops.object.mode_set(mode='OBJECT', toggle=True)
 
-# get array of vert coordinates according to spline type
+# ------------------------------------------------------------------------------
+# Convert array of vert coordinates to points according to spline type
 def vertsToPoints(Verts, splineType):
     # main vars
     vertArray = []
@@ -180,8 +182,8 @@ def vertsToPoints(Verts, splineType):
 
     return vertArray
 
-##------------------------------------------------------------
-# Main Function
+# ------------------------------------------------------------------------------
+# Create the Torus Knot curve and object and add it to the scene
 def create_torus_knot(self, context):
     # pick a name based on (p,q) parameters
     aName = "Torus Knot %i x %i" % (self.torus_p, self.torus_q)
@@ -189,7 +191,7 @@ def create_torus_knot(self, context):
     # create curve
     curve_data = bpy.data.curves.new(name=aName, type='CURVE')
     
-    # setup materials to be used for the links
+    # setup materials to be used for the TK links
     if self.use_colors:
         addLinkColors(self, curve_data)
 
@@ -253,9 +255,10 @@ def create_torus_knot(self, context):
 
     return
 
+# ------------------------------------------------------------------------------
 # Create materials to be assigned to each TK link 
 def addLinkColors(self, curveData):
-    # some predefined colors for torus knot chained links
+    # some predefined colors for the torus knot links
     colors = []
     colors += [ [0.0, 0.0, 1.0] ]
     colors += [ [0.0, 1.0, 0.0] ]
@@ -271,6 +274,7 @@ def addLinkColors(self, curveData):
     for i in range(links):
         matName = "TorusKnot-Link-%i" % i
         matListNames = bpy.data.materials.keys()
+        # create the material
         if matName not in matListNames:
             if DEBUG: print("Creating new material : %s" % matName)
             mat = bpy.data.materials.new(matName)
@@ -290,9 +294,10 @@ def addLinkColors(self, curveData):
 
         me.materials.append(mat)
 
-
+# ------------------------------------------------------------------------------
+# Main Torus Knot class
 class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
-    """"""
+    """""" 
     bl_idname = "curve.torus_knot_plus"
     bl_label = "Torus Knot +"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
@@ -419,7 +424,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 description="Phase spins by this radian amount.")
 
     #### TORUS DIMENSIONS options
-    mode = bpy.props.EnumProperty(
+    mode = EnumProperty(
                 name="Torus Dimensions",
                 items=(("MAJOR_MINOR", "Major/Minor",
                         "Use the Major/Minor radii for torus dimensions."),
@@ -479,7 +484,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Curve Resolution",
                 default=100,
                 min=3, soft_min=3,
-                description='Number of control vertices in the curve.')
+                description="Number of control vertices in the curve.")
 
     segment_res = IntProperty(
                 name="Segment Resolution",
@@ -622,7 +627,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     ##### EXECUTE #####
     def execute(self, context):
         if self.mode == 'EXT_INT':
-            # adjust reciprocal radii (R,r) <=> (eR,iR)
+            # adjust the equivalent radii pair : (R,r) <=> (eR,iR)
             self.torus_R = (self.torus_eR + self.torus_iR)*0.5
             self.torus_r = (self.torus_eR - self.torus_iR)*0.5
 
@@ -633,7 +638,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             R = self.torus_R
             r = self.torus_r
             links = gcd(p,q)
-            # get an approximate TK length 
+            # get an approximate length of the whole TK curve
             maxTKLen = 2*pi*sqrt(p*p*(R+r)*(R+r) + q*q*r*r) # upper bound approximation
             minTKLen = 2*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
             avgTKLen = (minTKLen + maxTKLen)/2 # average approximation
