@@ -302,6 +302,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     bl_label = "Torus Knot +"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
     bl_description = "Adds many types of tours knots"
+    bl_context = "object"
 
     def mode_update_callback(self, context):
         # keep the reciprocal radii sets (R,r)/(iR,eR) in sync
@@ -622,6 +623,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     ##### POLL #####
     @classmethod
     def poll(cls, context):
+        if context.mode != "OBJECT": return False
         return context.scene != None
 
     ##### EXECUTE #####
