@@ -292,15 +292,17 @@ def addLinkColors(self, curveData):
         if matName not in matListNames:
             if DEBUG: print("Creating new material : %s" % matName)
             mat = bpy.data.materials.new(matName)
-            if self.options_plus and self.random_colors:
-                mat.diffuse_color = random(), random(), random()
-            else:
-                cID = i % (len(colors))
-                mat.diffuse_color = colors[cID]
         else:
             if DEBUG: print("Material %s already exists" % matName)
             mat = bpy.data.materials[matName]
         
+        # set material color
+        if self.options_plus and self.random_colors:
+            mat.diffuse_color = random(), random(), random()
+        else:
+            cID = i % (len(colors)) # cycle through predefined colors
+            mat.diffuse_color = colors[cID]
+
         if self.options_plus:
             mat.diffuse_color.s = self.saturation
         else:
