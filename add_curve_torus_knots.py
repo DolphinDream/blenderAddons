@@ -260,12 +260,26 @@ def create_torus_knot(self, context):
 def addLinkColors(self, curveData):
     # some predefined colors for the torus knot links
     colors = []
-    colors += [ [0.0, 0.0, 1.0] ]
-    colors += [ [0.0, 1.0, 0.0] ]
-    colors += [ [1.0, 0.0, 0.0] ]
-    colors += [ [1.0, 1.0, 0.0] ]
-    colors += [ [0.0, 1.0, 1.0] ]
-    colors += [ [1.0, 0.0, 1.0] ]
+    if self.colorSet == "1": # RGBish
+        colors += [ [0.0, 0.0, 1.0] ]
+        colors += [ [0.0, 1.0, 0.0] ]
+        colors += [ [1.0, 0.0, 0.0] ]
+        colors += [ [1.0, 1.0, 0.0] ]
+        colors += [ [0.0, 1.0, 1.0] ]
+        colors += [ [1.0, 0.0, 1.0] ]
+        colors += [ [1.0, 0.5, 0.0] ]
+        colors += [ [0.0, 1.0, 0.5] ]
+        colors += [ [0.5, 0.0, 1.0] ]
+    else: # RainBow
+        colors += [ [0.0, 0.0, 1.0] ]
+        colors += [ [0.0, 0.5, 1.0] ]
+        colors += [ [0.0, 1.0, 1.0] ]
+        colors += [ [0.0, 1.0, 0.5] ]
+        colors += [ [0.0, 1.0, 0.0] ]
+        colors += [ [0.5, 1.0, 0.0] ]
+        colors += [ [1.0, 1.0, 0.0] ]
+        colors += [ [1.0, 0.5, 0.0] ]
+        colors += [ [1.0, 0.0, 0.0] ]
 
     me = curveData
     mat_offset = len(me.materials)
@@ -329,6 +343,11 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 name="Use Colors",
                 default=False,
                 description="Show torus links in colors.")
+
+    colorSet = EnumProperty(
+                name="Color Set",
+                items= (('1', 'RGBish', 'RGBsish ordered colors'),    
+                        ('2', 'Rainbow', 'Rainbow ordered colors')))
 
     random_colors = BoolProperty(
                 name="Randomize Colors",
@@ -609,6 +628,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
         box.prop(self, 'use_colors')
         if self.use_colors and self.options_plus:
             box = box.box()
+            box.prop(self, 'colorSet')
             box.prop(self, 'random_colors')
             box.prop(self, 'saturation')
 
