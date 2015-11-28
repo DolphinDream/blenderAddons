@@ -665,7 +665,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     ##### INVOKE #####
     def invoke(self, context, event):
         # store creation_matrix
-        self.align_matrix = align_matrix(self, context)
+        # self.align_matrix = align_matrix(self, context)
         self.execute(context)
 
         return {'FINISHED'}
