@@ -44,7 +44,7 @@ DEBUG = False
 
 # greatest common denominator
 def gcd(a, b):
-    if b == 0: 
+    if b == 0:
         return a
     else:
         return gcd(b, a % b)
@@ -73,19 +73,19 @@ def Torus_Knot(self, linkIndex=0):
 
     R = self.torus_R * s # major radius (scaled)
     r = self.torus_r * s # minor radius (scaled)
-    
+
     # number of decoupled links when (p,q) are NOT co-primes
     links = gcd(p,q) # = 1 when (p,q) are co-primes
-    
+
     # parametrized angle increment (cached outside of the loop for performance)
-    # NOTE: the total angle is divided by number of decoupled links to ensure 
+    # NOTE: the total angle is divided by number of decoupled links to ensure
     #       the curve does not overlap with itself when (p,q) are not co-primes
-    da = 2*pi/links/(N-1) 
+    da = 2*pi/links/(N-1)
 
     # link phase : each decoupled link is phased equally around the torus center
     # NOTE: linkIndex value is in [0, links-1]
     linkPhase = 2*pi/q * linkIndex # = 0 when there is just ONE link
-        
+
     # user defined phasing
     if self.options_plus:
         rPhase = self.torus_rP # user defined revolution phase
@@ -121,9 +121,9 @@ def Torus_Knot(self, linkIndex=0):
         y = (R + r*cos(phi)) * sin(theta)
         z = r*sin(phi) * h
 
-        # append 3D point 
+        # append 3D point
         # NOTE : the array is adjusted later as needed to 4D for POLY and NURBS
-        newPoints.append([x,y,z]) 
+        newPoints.append([x,y,z])
 
     return newPoints
 
@@ -187,10 +187,10 @@ def vertsToPoints(Verts, splineType):
 def create_torus_knot(self, context):
     # pick a name based on (p,q) parameters
     aName = "Torus Knot %i x %i" % (self.torus_p, self.torus_q)
-    
+
     # create curve
     curve_data = bpy.data.curves.new(name=aName, type='CURVE')
-    
+
     # setup materials to be used for the TK links
     if self.use_colors:
         addLinkColors(self, curve_data)
@@ -204,10 +204,10 @@ def create_torus_knot(self, context):
     for l in range(links):
         # get vertices for the current link
         verts = Torus_Knot(self, l)
-    
+
         # output splineType 'POLY' 'NURBS' or 'BEZIER'
-        splineType = self.outputType    
-        
+        splineType = self.outputType
+
         # turn verts into proper array (based on spline type)
         vertArray = vertsToPoints(verts, splineType)
 
@@ -256,7 +256,7 @@ def create_torus_knot(self, context):
     return
 
 # ------------------------------------------------------------------------------
-# Create materials to be assigned to each TK link 
+# Create materials to be assigned to each TK link
 def addLinkColors(self, curveData):
     # some predefined colors for the torus knot links
     colors = []
@@ -295,7 +295,7 @@ def addLinkColors(self, curveData):
         else:
             if DEBUG: print("Material %s already exists" % matName)
             mat = bpy.data.materials[matName]
-        
+
         # set material color
         if self.options_plus and self.random_colors:
             mat.diffuse_color = random(), random(), random()
@@ -313,7 +313,7 @@ def addLinkColors(self, curveData):
 # ------------------------------------------------------------------------------
 # Main Torus Knot class
 class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
-    """""" 
+    """"""
     bl_idname = "curve.torus_knot_plus"
     bl_label = "Torus Knot +"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
@@ -348,7 +348,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     colorSet = EnumProperty(
                 name="Color Set",
-                items= (('1', 'RGBish', 'RGBsish ordered colors'),    
+                items= (('1', 'RGBish', 'RGBsish ordered colors'),
                         ('2', 'Rainbow', 'Rainbow ordered colors')))
 
     random_colors = BoolProperty(
@@ -399,13 +399,13 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
                 default=2,
                 min=1, soft_min=1,
                 description="Number of REVOLUTIONs around the torus hole before closing the knot.")
-    
+
     torus_q = IntProperty(
                 name="q",
                 default=3,
                 min=1, soft_min=1,
                 description="Number of SPINs through the torus hole before closing the knot.")
- 
+
     flip_p = BoolProperty(
                 name="Flip p",
                 default=False,
@@ -456,7 +456,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     torus_R = FloatProperty(
                 name="Major Radius",
-                min=0.00, max=100.0, 
+                min=0.00, max=100.0,
                 default=1.0,
                 subtype='DISTANCE',
                 unit='LENGTH',
@@ -464,7 +464,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     torus_r = FloatProperty(
                 name="Minor Radius",
-                min=0.00, max=100.0, 
+                min=0.00, max=100.0,
                 default=.25,
                 subtype='DISTANCE',
                 unit='LENGTH',
@@ -472,7 +472,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     torus_iR = FloatProperty(
                 name="Interior Radius",
-                min=0.00, max=100.0, 
+                min=0.00, max=100.0,
                 # soft_min=1, soft_max=1,
                 default=.75,
                 subtype='DISTANCE',
@@ -481,7 +481,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     torus_eR = FloatProperty(
                 name="Exterior Radius",
-                min=0.00, max=100.0, 
+                min=0.00, max=100.0,
                 # soft_min=1, soft_max=1,
                 default=1.25,
                 subtype='DISTANCE',
@@ -490,7 +490,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     torus_s = FloatProperty(
                 name="Scale",
-                min=0.01, max=100.0, 
+                min=0.01, max=100.0,
                 # soft_min=1, soft_max=1,
                 default=1.00,
                 description="Scale factor to multiply the radii.")
@@ -622,7 +622,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             box.prop(self, 'geo_bRes')
             box.prop(self, 'geo_extrude')
             box.prop(self, 'geo_offset')
-           
+
         # COLOR options
         col = layout.column()
         col.label(text="Color Options:")
@@ -667,7 +667,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
             minTKLen = 2*pi*sqrt(p*p*(R-r)*(R-r) + q*q*r*r) # lower bound approximation
             avgTKLen = (minTKLen + maxTKLen)/2 # average approximation
             if DEBUG: print("Approximate average TK length = %.2f" % avgTKLen)
-            self.torus_res = max(3, avgTKLen/links * 8) # x N factor = control points per unit length 
+            self.torus_res = max(3, avgTKLen/links * 8) # x N factor = control points per unit length
 
         # update align matrix
         self.align_matrix = align_matrix(self, context)
