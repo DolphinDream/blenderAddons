@@ -34,7 +34,7 @@ bl_info = {
 
 #### import modules
 import bpy
-from bpy.props import *
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
 from math import sin, cos, pi, sqrt
 from mathutils import *
 from bpy_extras.object_utils import AddObjectHelper, object_data_add
