@@ -19,7 +19,7 @@
 '''
 bl_info = {
     "name": "Torus Knots",
-    "author": "Marius Giurgi, testscreenings",
+    "author": "Marius Giurgi (DolphinDream), testscreenings",
     "version": (0, 2),
     "blender": (2, 76, 0),
     "location": "View3D > Add > Curve",
@@ -321,7 +321,7 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     bl_context = "object"
 
     def mode_update_callback(self, context):
-        # keep the reciprocal radii sets (R,r)/(iR,eR) in sync
+        # keep the equivalent radii sets (R,r)/(eR,iR) in sync
         if self.mode == 'EXT_INT':
             self.torus_eR = self.torus_R + self.torus_r
             self.torus_iR = self.torus_R - self.torus_r
@@ -473,25 +473,22 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
     torus_iR = FloatProperty(
                 name="Interior Radius",
                 min=0.00, max=100.0,
-                # soft_min=1, soft_max=1,
                 default=.75,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Total interior radius of the torus.")
+                description="Interior radius of the torus (closest to the torus center).")
 
     torus_eR = FloatProperty(
                 name="Exterior Radius",
                 min=0.00, max=100.0,
-                # soft_min=1, soft_max=1,
                 default=1.25,
                 subtype='DISTANCE',
                 unit='LENGTH',
-                description="Total exterior radius of the torus.")
+                description="Exterior radius of the torus (farthest from the torus center).")
 
     torus_s = FloatProperty(
                 name="Scale",
                 min=0.01, max=100.0,
-                # soft_min=1, soft_max=1,
                 default=1.00,
                 description="Scale factor to multiply the radii.")
 
@@ -686,8 +683,6 @@ class torus_knot_plus(bpy.types.Operator, AddObjectHelper):
 
     ##### INVOKE #####
     def invoke(self, context, event):
-        # store creation_matrix
-        # self.align_matrix = align_matrix(self, context)
         self.execute(context)
 
         return {'FINISHED'}
