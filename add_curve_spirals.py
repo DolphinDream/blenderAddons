@@ -50,13 +50,14 @@ def make_cornu_spiral(props, context):
     M = props.epsilon
     for n in range(0, N):
         l = L * n/N
+        # l = L * (N/2-n)/N
         x = 0
         y = 0
         du = l/M
         for m in range(0, M):
             u = l * m/M
-            x = x + cos(u*u/2) * du
-            y = y + sin(u*u/2) * du
+            x = x + cos(pi*u*u/2) * du
+            y = y + sin(pi*u*u/2) * du
 
         px = x * S
         py = y * S
