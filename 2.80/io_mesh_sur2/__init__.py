@@ -35,15 +35,11 @@ bl_info = {
 # @todo write the wiki page
 
 """
-Import-Export SUR files (binary or ascii)
+Import-Export SUR files
 
 - Import automatically remove the doubles.
 - Export can export with/without modifiers applied
 
-Issues:
-
-Import:
-    - Does not handle endien
 """
 
 if "bpy" in locals():
@@ -88,10 +84,12 @@ class ImportSUR(Operator, ImportHelper):
             default="*.sur",
             options={'HIDDEN'},
             )
+
     files: CollectionProperty(
             name="File Path",
             type=OperatorFileListElement,
             )
+
     directory: StringProperty(
             subtype='DIR_PATH',
             )
@@ -145,9 +143,9 @@ class ImportSUR(Operator, ImportHelper):
 
         for path in paths:
             objName = bpy.path.display_name(os.path.basename(path))
-            tris, tri_nors, pts = sur_utils.read_sur(path)
-            tri_nors = tri_nors if self.use_facet_normal else None
-            blender_utils.create_and_link_mesh(objName, tris, tri_nors, pts, global_matrix)
+            verts, faces, norms = sur_utils.read_sur(path)
+            norms = norms if self.use_facet_normal else None
+            blender_utils.create_and_link_mesh(objName, faces, norms, verts, global_matrix)
 
         return {'FINISHED'}
 
@@ -166,6 +164,7 @@ class ExportSUR(Operator, ExportHelper):
             description="Export selected objects only",
             default=False,
             )
+
     global_scale: FloatProperty(
             name="Scale",
             min=0.01, max=1000.0,
@@ -177,16 +176,13 @@ class ExportSUR(Operator, ExportHelper):
             description="Apply current scene's unit (as defined by unit scale) to exported data",
             default=False,
             )
-    ascii: BoolProperty(
-            name="Ascii",
-            description="Save the file in ASCII file format",
-            default=False,
-            )
+
     use_mesh_modifiers: BoolProperty(
             name="Apply Modifiers",
             description="Apply the modifiers before saving",
             default=True,
             )
+
     batch_mode: EnumProperty(
             name="Batch Mode",
             items=(('OFF', "Off", "All data in one file"),
@@ -202,17 +198,6 @@ class ExportSUR(Operator, ExportHelper):
         from . import blender_utils
         import itertools
         from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("axis_forward",
-                                            "ascii",
-                                            "axis_up",
-                                            "use_selection",
-                                            "global_scale",
-                                            "check_existing",
-                                            "filter_glob",
-                                            "use_scene_unit",
-                                            "use_mesh_modifiers",
-                                            "batch_mode"
-                                            ))
 
         scene = context.scene
         if self.use_selection:
@@ -230,18 +215,24 @@ class ExportSUR(Operator, ExportHelper):
                                         ).to_4x4() @ Matrix.Scale(global_scale, 4)
 
         if self.batch_mode == 'OFF':
-            faces = itertools.chain.from_iterable(
-                    blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                    for ob in data_seq)
+            prefix = os.path.splitext(self.filepath)[0]
+            print("prefix=", prefix)
+            for ob in data_seq:
+                print(ob)
+                verts, faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
+                filepath = prefix + ".sur"
+                print("filepath=", filepath)
+                sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
 
-            sur_utils.write_sur(faces=faces, **keywords)
         elif self.batch_mode == 'OBJECT':
             prefix = os.path.splitext(self.filepath)[0]
-            keywords_temp = keywords.copy()
+            print("prefix=", prefix)
+
             for ob in data_seq:
-                faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                keywords_temp["filepath"] = prefix + bpy.path.clean_name(ob.name) + ".sur"
-                sur_utils.write_sur(faces=faces, **keywords_temp)
+                verts, faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
+                filepath = prefix + bpy.path.clean_name(ob.name) + ".sur"
+                print("filepath=", filepath)
+                sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
 
         return {'FINISHED'}
 

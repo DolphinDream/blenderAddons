@@ -23,28 +23,38 @@ import array
 from itertools import chain
 
 
-def create_and_link_mesh(name, faces, face_nors, points, global_matrix):
+def create_and_link_mesh(name, faces, face_normals, points, global_matrix):
     """
     Create a blender mesh and object called name from a list of
     *points* and *faces* and link it in the current scene.
     """
 
+    print("new mesh will be created")
+
+    print("name = ", name)
+    print("faces = ", faces)
+    print("face_normals = ", face_normals)
+    print("points = ", points)
+    print("global_matrix = ", global_matrix)
+
+    # return
+
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(points, [], faces)
 
-    if face_nors:
+    if face_normals:
         # Note: we store 'temp' normals in loops, since validate() may alter final mesh,
-        #       we can only set custom lnors *after* calling it.
+        #       we can only set custom loop_normals *after* calling it.
         mesh.create_normals_split()
-        lnors = tuple(chain(*chain(*zip(face_nors, face_nors, face_nors))))
-        mesh.loops.foreach_set("normal", lnors)
+        loop_normals = tuple(chain(*chain(*zip(face_normals, face_normals, face_normals))))
+        mesh.loops.foreach_set("normal", loop_normals)
 
     mesh.transform(global_matrix)
 
     # update mesh to allow proper display
-    mesh.validate(clean_customdata=False)  # *Very* important to not remove lnors here!
+    mesh.validate(clean_customdata=False)  # *Very* important to not remove loop_normals here!
 
-    if face_nors:
+    if face_normals:
         clnors = array.array('f', [0.0] * (len(mesh.loops) * 3))
         mesh.loops.foreach_get("normal", clnors)
 
@@ -99,9 +109,14 @@ def faces_from_mesh(ob, global_matrix, use_mesh_modifiers=False):
     mesh.calc_loop_triangles()
 
     vertices = mesh.vertices
-    triangles = mesh.triangles
+    triangles = mesh.loop_triangles
 
-    for tri in mesh.loop_triangles:
-        yield [vertices[index].co.copy() for index in tri.vertices]
+    verts = [list(vert.co) for vert in vertices]
+    faces = [[index for index in tri.vertices] for tri in triangles]
 
     mesh_owner.to_mesh_clear()
+
+    # print("verts=", verts)
+    # print("faces=", faces)
+
+    return verts, faces
