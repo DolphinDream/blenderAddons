@@ -215,24 +215,19 @@ class ExportSUR(Operator, ExportHelper):
                                         ).to_4x4() @ Matrix.Scale(global_scale, 4)
 
         if self.batch_mode == 'OFF':
-            prefix = os.path.splitext(self.filepath)[0]
-            print("prefix=", prefix)
-            for ob in data_seq:
-                print(ob)
-                verts, faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                filepath = prefix + ".sur"
-                print("filepath=", filepath)
-                sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
+            verts, faces = itertools.chain.from_iterable(
+                    blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
+                    for ob in data_seq)
 
+            sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
         elif self.batch_mode == 'OBJECT':
             prefix = os.path.splitext(self.filepath)[0]
             print("prefix=", prefix)
 
             for ob in data_seq:
-                verts, faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                filepath = prefix + bpy.path.clean_name(ob.name) + ".sur"
-                print("filepath=", filepath)
-                sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
+                faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
+                keywords_temp["filepath"] = prefix + bpy.path.clean_name(ob.name) + ".sur"
+                sur_utils.write_sur(faces=faces, verts=verts)
 
         return {'FINISHED'}
 

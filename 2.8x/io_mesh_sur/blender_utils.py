@@ -111,12 +111,8 @@ def faces_from_mesh(ob, global_matrix, use_mesh_modifiers=False):
     vertices = mesh.vertices
     triangles = mesh.loop_triangles
 
-    verts = [list(vert.co) for vert in vertices]
-    faces = [[index for index in tri.vertices] for tri in triangles]
+    triangles = mesh.triangles
 
-    mesh_owner.to_mesh_clear()
+    return vertices, triangles
 
-    # print("verts=", verts)
-    # print("faces=", faces)
-
-    return verts, faces
+    # mesh_owner.to_mesh_clear()
