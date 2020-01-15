@@ -22,6 +22,7 @@ import bpy
 import array
 from itertools import chain
 
+from pprint import pprint
 
 def create_and_link_mesh(name, faces, face_normals, points, global_matrix):
     """
@@ -111,7 +112,16 @@ def faces_from_mesh(ob, global_matrix, use_mesh_modifiers=False):
     vertices = mesh.vertices
     triangles = mesh.loop_triangles
 
-    triangles = mesh.triangles
+    print("mesh = ")
+    pprint(mesh)
+
+    print("triangles=")
+    pprint(triangles)
+    # print("triangles = ", triangles)
+    # triangles = mesh.triangles
+    tris = [list(tri.vertices) for tri in triangles]
+    print("tris=")
+    pprint(tris)
 
     return vertices, triangles
 

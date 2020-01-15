@@ -76,6 +76,7 @@ class ImportSUR(Operator, ImportHelper):
     """Load SUR triangle mesh data"""
     bl_idname = "import_mesh.sur"
     bl_label = "Import SUR"
+    bl_description = "Load STL triangle mesh data"
     bl_options = {'UNDO'}
 
     filename_ext = ".sur"
@@ -121,6 +122,8 @@ class ImportSUR(Operator, ImportHelper):
         paths = [os.path.join(self.directory, name.name)
                  for name in self.files]
 
+        print("paths = ", paths)
+
         scene = context.scene
 
         # Take into account scene's unit scale, so that 1 inch in Blender gives 1 inch elsewhere! See T42000.
@@ -152,9 +155,9 @@ class ImportSUR(Operator, ImportHelper):
 
 @orientation_helper(axis_forward='Y', axis_up='Z')
 class ExportSUR(Operator, ExportHelper):
-    """Save SUR triangle mesh data from the active object"""
     bl_idname = "export_mesh.sur"
     bl_label = "Export SUR"
+    bl_description = """Save SUR triangle mesh data"""
 
     filename_ext = ".sur"
     filter_glob: StringProperty(default="*.sur", options={'HIDDEN'})
@@ -162,7 +165,7 @@ class ExportSUR(Operator, ExportHelper):
     use_selection: BoolProperty(
             name="Selection Only",
             description="Export selected objects only",
-            default=False,
+            default=True,
             )
 
     global_scale: FloatProperty(
@@ -201,9 +204,9 @@ class ExportSUR(Operator, ExportHelper):
 
         scene = context.scene
         if self.use_selection:
-            data_seq = context.selected_objects
+            objects = context.selected_objects
         else:
-            data_seq = scene.objects
+            objects = scene.objects
 
         # Take into account scene's unit scale, so that 1 inch in Blender gives 1 inch elsewhere! See T42000.
         global_scale = self.global_scale
@@ -217,16 +220,15 @@ class ExportSUR(Operator, ExportHelper):
         if self.batch_mode == 'OFF':
             verts, faces = itertools.chain.from_iterable(
                     blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                    for ob in data_seq)
+                    for ob in objects)
 
             sur_utils.write_sur(filepath=filepath, faces=faces, verts=verts)
         elif self.batch_mode == 'OBJECT':
             prefix = os.path.splitext(self.filepath)[0]
             print("prefix=", prefix)
 
-            for ob in data_seq:
+            for ob in objects:
                 faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
-                keywords_temp["filepath"] = prefix + bpy.path.clean_name(ob.name) + ".sur"
                 sur_utils.write_sur(faces=faces, verts=verts)
 
         return {'FINISHED'}
