@@ -100,13 +100,15 @@ def write_sur(filepath, verts, faces):
         data.write("%d\n" % len(verts))
         # write the vertex coordinates
         for vert in verts:
-            data.write("%f %f %f\n" % (vert[0], vert[1], vert[2]))
+            # print("vert =", vert.co )
+            data.write("%f %f %f\n" % (vert.co[0], vert.co[1], vert.co[2]))
 
         # write the number of faces
         data.write("%d\n" % len(faces))
         # write the face vertex indices
         for face in faces:
-            data.write("%d %d %d\n" % (face[0], face[1], face[2]))
+            print(type(face))
+            data.write("%d %d %d\n" % (face.vertices[0], face.vertices[1], face.vertices[2]))
 
 
 if __name__ == '__main__':

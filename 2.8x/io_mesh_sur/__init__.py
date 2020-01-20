@@ -218,6 +218,8 @@ class ExportSUR(Operator, ExportHelper):
                                         ).to_4x4() @ Matrix.Scale(global_scale, 4)
 
         if self.batch_mode == 'OFF':
+            print("self.filepath=", self.filepath)
+            filepath=self.filepath
             verts, faces = itertools.chain.from_iterable(
                     blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
                     for ob in objects)
