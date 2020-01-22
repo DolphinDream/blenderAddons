@@ -76,7 +76,7 @@ class ImportSUR(Operator, ImportHelper):
     """Load SUR triangle mesh data"""
     bl_idname = "import_mesh.sur"
     bl_label = "Import SUR"
-    bl_description = "Load STL triangle mesh data"
+    bl_description = "Load SUR triangle mesh data"
     bl_options = {'UNDO'}
 
     filename_ext = ".sur"
@@ -119,8 +119,7 @@ class ImportSUR(Operator, ImportHelper):
         from . import blender_utils
         from mathutils import Matrix
 
-        paths = [os.path.join(self.directory, name.name)
-                 for name in self.files]
+        paths = [os.path.join(self.directory, name.name) for name in self.files]
 
         print("paths = ", paths)
 
